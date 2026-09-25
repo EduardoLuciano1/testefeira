@@ -1,0 +1,1424 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>EcoRotas — Rotas de Reciclagem</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700;9..144,900&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="">
+<style>
+  :root{
+    --verde-900:#0f3d2e;
+    --verde-700:#1f6b48;
+    --verde-500:#3f9d68;
+    --verde-200:#c9e8d4;
+    --laranja-700:#c2490c;
+    --laranja-500:#ff6b1a;
+    --laranja-300:#ffb27a;
+    --papel:#faf5ec;
+    --papel-2:#f1e8d8;
+    --tinta:#17241d;
+    --tinta-suave:#4a5a4f;
+    --branco:#fffdf9;
+    --raio:18px;
+    --raio-sm:10px;
+    --sombra: 0 10px 30px -12px rgba(15,61,46,0.25);
+  }
+
+  *{box-sizing:border-box;}
+  html{scroll-behavior:smooth;}
+  body{
+    margin:0;
+    font-family:'Manrope',sans-serif;
+    background:var(--papel);
+    color:var(--tinta);
+    line-height:1.55;
+  }
+  h1,h2,h3,.display{
+    font-family:'Fraunces',serif;
+    font-weight:700;
+    letter-spacing:-0.01em;
+    margin:0;
+  }
+  img,svg{display:block;max-width:100%;}
+  a{color:inherit;}
+  button{font-family:inherit;cursor:pointer;}
+  .container{
+    width:100%;
+    max-width:1160px;
+    margin:0 auto;
+    padding:0 24px;
+  }
+  .eyebrow{
+    text-transform:uppercase;
+    letter-spacing:0.14em;
+    font-size:0.72rem;
+    font-weight:800;
+    color:var(--laranja-700);
+  }
+
+  /* ---------- HEADER ---------- */
+  header{
+    position:sticky;
+    top:0;
+    z-index:50;
+    background:rgba(250,245,236,0.92);
+    backdrop-filter:blur(8px);
+    border-bottom:1px solid rgba(15,61,46,0.08);
+  }
+  .nav{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    padding:16px 24px;
+  }
+  .logo{
+    display:flex;
+    align-items:center;
+    gap:10px;
+    font-family:'Fraunces',serif;
+    font-weight:700;
+    font-size:1.25rem;
+    color:var(--verde-900);
+  }
+  .logo-mark{
+    width:34px;height:34px;
+    border-radius:50%;
+    background:conic-gradient(from 220deg, var(--verde-500), var(--laranja-500), var(--verde-700));
+    flex-shrink:0;
+  }
+  .nav-right{
+    display:flex;
+    align-items:center;
+    gap:20px;
+  }
+  .nav-links{
+    display:flex;
+    gap:28px;
+    list-style:none;
+    margin:0;padding:0;
+    font-weight:600;
+    font-size:0.95rem;
+  }
+  .nav-links a{
+    text-decoration:none;
+    color:var(--tinta-suave);
+    padding-bottom:4px;
+    border-bottom:2px solid transparent;
+    transition:.2s;
+  }
+  .nav-links a:hover{color:var(--verde-900);border-color:var(--laranja-500);}
+  .nav-auth{
+    display:flex;
+    gap:10px;
+  }
+  .btn-auth{
+    background:transparent;
+    border:1px solid var(--verde-900);
+    color:var(--verde-900);
+    padding:8px 16px;
+    border-radius:100px;
+    font-weight:700;
+    font-size:0.85rem;
+    transition:0.2s;
+  }
+  .btn-auth:hover{
+    background:var(--verde-900);
+    color:var(--branco);
+  }
+  .btn-auth-primary{
+    background:var(--verde-900);
+    border:1px solid var(--verde-900);
+    color:var(--branco);
+    padding:8px 16px;
+    border-radius:100px;
+    font-weight:700;
+    font-size:0.85rem;
+    transition:0.2s;
+  }
+  .btn-auth-primary:hover{
+    background:var(--verde-700);
+    border-color:var(--verde-700);
+  }
+  .menu-btn{
+    display:none;
+    background:none;border:none;
+    width:40px;height:40px;
+    position:relative;
+  }
+  .menu-btn span, .menu-btn span::before, .menu-btn span::after{
+    content:'';
+    position:absolute;
+    left:8px;right:8px;
+    height:2px;
+    background:var(--verde-900);
+    transition:.25s;
+  }
+  .menu-btn span{top:19px;}
+  .menu-btn span::before{top:-7px;}
+  .menu-btn span::after{top:7px;}
+  .menu-btn.open span{background:transparent;}
+  .menu-btn.open span::before{transform:rotate(45deg);top:0;}
+  .menu-btn.open span::after{transform:rotate(-45deg);top:0;}
+
+  /* ---------- HERO ---------- */
+  .hero{
+    position:relative;
+    overflow:hidden;
+    padding:72px 0 56px;
+  }
+  .hero-grid{
+    display:grid;
+    grid-template-columns:1.1fr 0.9fr;
+    gap:48px;
+    align-items:center;
+  }
+  .hero h1{
+    font-size:clamp(2.3rem, 4.6vw, 3.6rem);
+    line-height:1.05;
+    color:var(--verde-900);
+    margin:14px 0 20px;
+  }
+  .hero h1 em{
+    font-style:normal;
+    color:var(--laranja-500);
+  }
+  .hero p{
+    font-size:1.08rem;
+    color:var(--tinta-suave);
+    max-width:46ch;
+    margin-bottom:28px;
+  }
+  .hero-actions{display:flex;gap:14px;flex-wrap:wrap;}
+  .btn{
+    display:inline-flex;
+    align-items:center;
+    gap:8px;
+    padding:14px 26px;
+    border-radius:100px;
+    font-weight:700;
+    text-decoration:none;
+    font-size:0.95rem;
+    border:2px solid transparent;
+    transition:transform .2s ease, box-shadow .2s ease;
+  }
+  .btn:hover{transform:translateY(-2px);}
+  .btn-primary{
+    background:var(--laranja-500);
+    color:var(--branco);
+    box-shadow:0 10px 24px -8px rgba(255,107,26,0.55);
+  }
+  .btn-outline{
+    border-color:var(--verde-900);
+    color:var(--verde-900);
+    background:transparent;
+  }
+
+  .hero-stats{
+    display:flex;
+    gap:28px;
+    margin-top:40px;
+    flex-wrap:wrap;
+  }
+  .stat b{
+    display:block;
+    font-family:'Fraunces',serif;
+    font-size:1.9rem;
+    color:var(--verde-700);
+  }
+  .stat span{
+    font-size:0.82rem;
+    color:var(--tinta-suave);
+    font-weight:600;
+  }
+
+  .hero-art{
+    position:relative;
+    background:var(--verde-900);
+    border-radius:28px;
+    aspect-ratio:1/1;
+    overflow:hidden;
+    box-shadow:var(--sombra);
+  }
+  .hero-art svg{width:100%;height:100%;}
+
+  /* ---------- SECTION HEADERS ---------- */
+  section{padding:72px 0;}
+  .section-head{
+    max-width:640px;
+    margin-bottom:44px;
+  }
+  .section-head h2{
+    font-size:clamp(1.7rem,3vw,2.4rem);
+    color:var(--verde-900);
+    margin-top:10px;
+  }
+  .section-head p{color:var(--tinta-suave);margin-top:12px;font-size:1.02rem;}
+
+  .alt-bg{background:var(--branco);border-top:1px solid rgba(15,61,46,0.08);border-bottom:1px solid rgba(15,61,46,0.08);}
+
+  /* ---------- ROTAS ---------- */
+  .rotas-wrap{position:relative;}
+  .rota-track{position:relative;padding-left:0;}
+  .rota-item{
+    position:relative;
+    display:grid;
+    grid-template-columns:64px 1fr;
+    gap:20px;
+    padding-bottom:44px;
+  }
+  .rota-item:last-child{padding-bottom:0;}
+  .rota-marker{
+    position:relative;
+    width:64px;
+    display:flex;
+    justify-content:center;
+  }
+  .rota-marker .dot{
+    width:44px;height:44px;
+    border-radius:50%;
+    background:var(--verde-900);
+    color:var(--branco);
+    display:flex;align-items:center;justify-content:center;
+    font-family:'Fraunces',serif;font-weight:700;
+    z-index:2;
+    box-shadow:0 0 0 6px var(--papel);
+  }
+  .rota-item:nth-child(odd) .rota-marker .dot{background:var(--laranja-500);}
+  .rota-line{
+    position:absolute;
+    top:44px;bottom:-44px;
+    left:50%;
+    transform:translateX(-50%);
+    width:3px;
+    background-image:linear-gradient(var(--verde-700) 60%, transparent 0%);
+    background-size:3px 12px;
+    background-repeat:repeat-y;
+    z-index:1;
+  }
+  .rota-item:last-child .rota-line{display:none;}
+  .rota-content{
+    background:var(--branco);
+    border:1px solid rgba(15,61,46,0.08);
+    border-radius:var(--raio-sm);
+    padding:18px 22px;
+  }
+  .rota-content .time{font-size:0.78rem;font-weight:800;color:var(--laranja-700);}
+  .rota-content h4{font-family:'Fraunces',serif;font-size:1.08rem;color:var(--verde-900);margin:4px 0 6px;}
+  .rota-content p{margin:0;color:var(--tinta-suave);font-size:0.92rem;}
+
+  .rotas-list{display:flex;flex-direction:column;gap:14px;margin-top:32px;}
+  .rota-select{
+    display:flex;
+    gap:10px;
+    flex-wrap:wrap;
+    margin-bottom:8px;
+  }
+  .rota-select button{
+    background:var(--papel-2);
+    border:1px solid rgba(15,61,46,0.12);
+    padding:10px 18px;
+    border-radius:var(--raio-sm);
+    font-weight:700;
+    font-size:0.85rem;
+  }
+  .rota-select button.active{background:var(--verde-700);color:var(--branco);border-color:var(--verde-700);}
+
+  /* ---------- ODS ---------- */
+  .ods-grid{
+    display:grid;
+    grid-template-columns:repeat(4,1fr);
+    gap:16px;
+  }
+  .ods-card{
+    border-radius:var(--raio-sm);
+    padding:20px;
+    color:var(--branco);
+    min-height:190px;
+    display:flex;
+    flex-direction:column;
+    justify-content:space-between;
+    position:relative;
+    overflow:hidden;
+  }
+  .ods-card .num{
+    font-family:'Fraunces',serif;
+    font-size:2.2rem;
+    font-weight:900;
+    opacity:0.55;
+  }
+  .ods-card h4{font-size:1rem;font-weight:800;line-height:1.25;}
+  .ods-card p{font-size:0.8rem;opacity:0.92;margin-top:6px;}
+  .ods-11{background:var(--laranja-700);}
+  .ods-12{background:#8a5a1e;}
+  .ods-13{background:var(--verde-900);}
+  .ods-15{background:var(--verde-500);}
+
+  /* ---------- MAPA ---------- */
+  .mapa-layout{
+    display:grid;
+    grid-template-columns:1.3fr 1fr;
+    gap:24px;
+    align-items:start;
+  }
+  #mapaLeaflet{
+    width:100%;
+    height:440px;
+    border-radius:var(--raio);
+    box-shadow:var(--sombra);
+    border:1px solid rgba(15,61,46,0.1);
+    background:var(--papel-2);
+  }
+  .leaflet-popup-content b{color:var(--verde-900);font-family:'Fraunces',serif;}
+  .waze-btn{
+    display:inline-flex;
+    align-items:center;
+    gap:6px;
+    margin-top:6px;
+    background:#33ccff;
+    color:#062b36;
+    font-weight:800;
+    font-size:0.78rem;
+    padding:6px 12px;
+    border-radius:100px;
+    text-decoration:none;
+  }
+  .mapa-lista{
+    display:flex;
+    flex-direction:column;
+    gap:10px;
+    max-height:440px;
+    overflow-y:auto;
+    padding-right:4px;
+  }
+  .mapa-ponto{
+    background:var(--branco);
+    border:1px solid rgba(15,61,46,0.08);
+    border-radius:var(--raio-sm);
+    padding:14px 16px;
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    gap:10px;
+  }
+  .mapa-ponto h4{font-family:'Fraunces',serif;font-size:0.95rem;color:var(--verde-900);}
+  .mapa-ponto p{margin:2px 0 0;font-size:0.8rem;color:var(--tinta-suave);}
+  .mapa-nota{
+    font-size:0.78rem;
+    color:var(--tinta-suave);
+    margin-top:14px;
+    max-width:70ch;
+  }
+
+  /* ---------- DICAS ---------- */
+  .dicas-grid{
+    display:grid;
+    grid-template-columns:repeat(3,1fr);
+    gap:20px;
+  }
+  .dica-card{
+    background:var(--branco);
+    border:1px solid rgba(15,61,46,0.08);
+    border-radius:var(--raio-sm);
+    padding:22px;
+  }
+  .dica-card .emoji{font-size:1.8rem;}
+  .dica-card h4{font-family:'Fraunces',serif;color:var(--verde-900);font-size:1.02rem;margin:10px 0 6px;}
+  .dica-card p{color:var(--tinta-suave);font-size:0.88rem;margin:0;}
+
+  /* ---------- COMUNIDADE ---------- */
+  .comunidade-box{
+    max-width:640px;
+  }
+  .comunidade-cta{
+    background:var(--branco);
+    border:1px dashed rgba(15,61,46,0.3);
+    border-radius:var(--raio);
+    padding:28px;
+    text-align:center;
+  }
+  .comunidade-cta p{color:var(--tinta-suave);margin-bottom:16px;}
+  #comunidadeLogged{display:none;}
+  .post-form{
+    display:flex;
+    flex-direction:column;
+    gap:10px;
+    margin-bottom:28px;
+  }
+  .post-form textarea{
+    width:100%;
+    resize:vertical;
+    min-height:80px;
+    padding:14px 16px;
+    border-radius:var(--raio-sm);
+    border:1px solid rgba(15,61,46,0.2);
+    background:var(--branco);
+    font-family:inherit;
+    font-size:0.95rem;
+    outline:none;
+  }
+  .post-form textarea:focus{border-color:var(--verde-700);}
+  .post-form-row{display:flex;justify-content:space-between;align-items:center;gap:10px;}
+  .post-form-row small{color:var(--tinta-suave);font-size:0.78rem;}
+  .post-list{display:flex;flex-direction:column;gap:12px;}
+  .post-card{
+    background:var(--branco);
+    border:1px solid rgba(15,61,46,0.08);
+    border-radius:var(--raio-sm);
+    padding:16px 18px;
+  }
+  .post-card-head{
+    display:flex;
+    justify-content:space-between;
+    align-items:baseline;
+    gap:10px;
+    margin-bottom:6px;
+  }
+  .post-card-head b{color:var(--verde-900);font-size:0.88rem;}
+  .post-card-head span{color:var(--tinta-suave);font-size:0.75rem;}
+  .post-card p{margin:0;font-size:0.92rem;color:var(--tinta);white-space:pre-wrap;}
+  .post-delete{
+    background:none;
+    border:none;
+    color:var(--laranja-700);
+    font-size:0.75rem;
+    font-weight:700;
+    margin-top:8px;
+    padding:0;
+  }
+  .post-empty{color:var(--tinta-suave);font-size:0.9rem;}
+
+  /* ---------- MODAL LOGIN / CADASTRO ---------- */
+  .modal-overlay{
+    position:fixed;
+    top:0;left:0;right:0;bottom:0;
+    background:rgba(15,61,46,0.6);
+    backdrop-filter:blur(4px);
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    z-index:100;
+    opacity:0;
+    pointer-events:none;
+    transition:opacity 0.3s ease;
+    padding:20px;
+  }
+  .modal-overlay.open{
+    opacity:1;
+    pointer-events:all;
+  }
+  .modal-card{
+    background:var(--papel);
+    border-radius:var(--raio);
+    width:100%;
+    max-width:420px;
+    padding:32px;
+    box-shadow:0 20px 40px rgba(0,0,0,0.2);
+    position:relative;
+    transform:translateY(20px);
+    transition:transform 0.3s ease;
+  }
+  .modal-overlay.open .modal-card{
+    transform:translateY(0);
+  }
+  .modal-close{
+    position:absolute;
+    top:16px;right:16px;
+    background:none;border:none;
+    font-size:1.5rem;
+    color:var(--tinta-suave);
+    cursor:pointer;
+  }
+  .auth-tabs{
+    display:flex;
+    gap:10px;
+    border-bottom:2px solid var(--papel-2);
+    margin-bottom:24px;
+  }
+  .auth-tab{
+    background:none;
+    border:none;
+    padding:10px 0;
+    font-weight:700;
+    font-size:1rem;
+    color:var(--tinta-suave);
+    border-bottom:2px solid transparent;
+    margin-bottom:-2px;
+  }
+  .auth-tab.active{
+    color:var(--verde-900);
+    border-color:var(--laranja-500);
+  }
+  .auth-form{
+    display:none;
+    flex-direction:column;
+    gap:16px;
+  }
+  .auth-form.active{
+    display:flex;
+  }
+  .form-group{
+    display:flex;
+    flex-direction:column;
+    gap:6px;
+  }
+  .form-group label{
+    font-size:0.85rem;
+    font-weight:700;
+    color:var(--tinta-suave);
+  }
+  .form-group input{
+    padding:12px 16px;
+    border-radius:var(--raio-sm);
+    border:1px solid rgba(15,61,46,0.2);
+    background:var(--branco);
+    font-family:inherit;
+    font-size:0.95rem;
+    outline:none;
+  }
+  .form-group input:focus{
+    border-color:var(--verde-700);
+  }
+  .btn-submit{
+    background:var(--verde-900);
+    color:var(--branco);
+    border:none;
+    padding:14px;
+    border-radius:100px;
+    font-weight:700;
+    font-size:0.95rem;
+    margin-top:8px;
+  }
+  .btn-submit:hover{
+    background:var(--verde-700);
+  }
+  .btn-submit:disabled{
+    opacity:0.6;
+    cursor:not-allowed;
+  }
+  .form-feedback{
+    display:none;
+    padding:10px 14px;
+    border-radius:var(--raio-sm);
+    font-size:0.85rem;
+    font-weight:700;
+  }
+  .form-feedback.show{display:block;}
+  .form-feedback.error{
+    background:#fdeceb;
+    color:#c2490c;
+    border:1px solid #f3c3b6;
+  }
+  .form-feedback.success{
+    background:var(--verde-200);
+    color:var(--verde-900);
+    border:1px solid var(--verde-500);
+  }
+
+  /* ---------- FOOTER ---------- */
+  footer{
+    background:var(--tinta);
+    color:rgba(255,253,249,0.7);
+    padding:48px 0 24px;
+    font-size:0.88rem;
+  }
+  .footer-grid{
+    display:grid;
+    grid-template-columns:1.4fr 1fr 1fr;
+    gap:32px;
+    padding-bottom:32px;
+    border-bottom:1px solid rgba(255,255,255,0.1);
+  }
+  footer h5{color:var(--branco);font-family:'Fraunces',serif;font-size:1.05rem;margin-bottom:14px;}
+  footer ul{list-style:none;padding:0;margin:0;display:flex;flex-direction:column;gap:8px;}
+  footer a{text-decoration:none;color:inherit;}
+  footer a:hover{color:var(--laranja-300);}
+  .footer-bottom{
+    padding-top:20px;
+    display:flex;
+    justify-content:space-between;
+    flex-wrap:wrap;
+    gap:10px;
+  }
+
+  /* ---------- RESPONSIVE ---------- */
+  @media (max-width:900px){
+    .hero-grid{grid-template-columns:1fr;}
+    .hero-art{order:-1;max-width:420px;margin:0 auto;}
+    .ods-grid{grid-template-columns:repeat(2,1fr);}
+    .footer-grid{grid-template-columns:1fr 1fr;}
+    .mapa-layout{grid-template-columns:1fr;}
+    .mapa-lista{max-height:260px;}
+    .dicas-grid{grid-template-columns:1fr 1fr;}
+  }
+  @media (max-width:720px){
+    .nav-right{display:none;}
+    .menu-btn{display:block;}
+    .nav-right.mobile-open{
+      display:flex;
+      position:absolute;
+      top:100%;left:0;right:0;
+      background:var(--papel);
+      flex-direction:column;
+      padding:20px 24px;
+      gap:16px;
+      border-bottom:1px solid rgba(15,61,46,0.1);
+    }
+    .nav-links{
+      flex-direction:column;
+      gap:16px;
+    }
+    .nav-auth{
+      flex-direction:column;
+      width:100%;
+    }
+    .btn-auth, .btn-auth-primary{
+      width:100%;
+      text-align:center;
+    }
+  }
+  @media (max-width:640px){
+    .ods-grid{grid-template-columns:1fr;}
+    .footer-grid{grid-template-columns:1fr;}
+    .rota-item{grid-template-columns:48px 1fr;gap:14px;}
+    .rota-marker{width:48px;}
+    .rota-marker .dot{width:36px;height:36px;font-size:0.85rem;}
+    section{padding:52px 0;}
+    .dicas-grid{grid-template-columns:1fr;}
+    #mapaLeaflet{height:320px;}
+  }
+
+  @media (prefers-reduced-motion: reduce){
+    html{scroll-behavior:auto;}
+    *{transition:none !important;animation:none !important;}
+  }
+</style>
+</head>
+<body>
+
+<header>
+<nav class="nav container">
+  <div class="logo">
+    <span class="logo-mark"></span>
+    EcoRotas
+  </div>
+  <div class="nav-right" id="navRight">
+    <ul class="nav-links">
+      <li><a href="#rotas">Rotas</a></li>
+      <li><a href="#mapa">Mapa</a></li>
+      <li><a href="#ods">ODS</a></li>
+      <li><a href="#dicas">Dicas</a></li>
+      <li><a href="#comunidade">Comunidade</a></li>
+    </ul>
+    <div class="nav-auth" id="navAuth">
+      <button class="btn-auth" id="openLoginBtn">Entrar</button>
+      <button class="btn-auth-primary" id="openRegisterBtn">Cadastrar</button>
+    </div>
+    <div class="nav-auth" id="navUser" style="display:none;">
+      <span id="navUserEmail" style="font-weight:700;color:var(--verde-900);font-size:0.9rem;"></span>
+      <button class="btn-auth" id="logoutBtn">Sair</button>
+    </div>
+  </div>
+  <button class="menu-btn" id="menuBtn" aria-label="Abrir menu"><span></span></button>
+</nav>
+</header>
+
+<main>
+  <!-- HERO -->
+  <section class="hero">
+    <div class="container hero-grid">
+      <div>
+        <span class="eyebrow">Mapa colaborativo de reciclagem</span>
+        <h1>Cada resíduo tem <em>um destino certo</em> — e um caminho até lá.</h1>
+        <p>O EcoRotas reúne cooperativas e as rotas de recolhimento da sua região, para que reciclar deixe de ser um problema de logística.</p>
+        <div class="hero-actions">
+          <a href="#rotas" class="btn btn-primary">Ver rotas de coleta</a>
+          <a href="#ods" class="btn btn-outline">Conhecer os ODS</a>
+        </div>
+        <div class="hero-stats">
+          <div class="stat"><b>7</b><span>rotas semanais</span></div>
+          <div class="stat"><b>12t</b><span>recicladas por mês</span></div>
+        </div>
+      </div>
+
+      <div class="hero-art">
+        <svg viewBox="0 0 400 400" xmlns="http://www.w3.org/2000/svg">
+          <defs>
+            <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
+              <path d="M40 0H0V40" fill="none" stroke="rgba(255,253,249,0.06)" stroke-width="1"/>
+            </pattern>
+          </defs>
+          <rect width="400" height="400" fill="url(#grid)"/>
+          <path d="M30 320 C 90 260, 120 300, 170 240 S 250 150, 300 170 S 360 90, 380 60"
+                fill="none" stroke="#ff6b1a" stroke-width="4" stroke-dasharray="2 14" stroke-linecap="round"/>
+          <g>
+            <circle cx="30" cy="320" r="10" fill="#3f9d68"/>
+            <circle cx="170" cy="240" r="10" fill="#ffb27a"/>
+            <circle cx="300" cy="170" r="10" fill="#3f9d68"/>
+            <circle cx="380" cy="60" r="12" fill="#ff6b1a"/>
+          </g>
+          <g transform="translate(150,290)">
+            <rect x="0" y="10" width="46" height="34" rx="6" fill="#c9e8d4"/>
+            <rect x="6" y="0" width="34" height="16" rx="4" fill="#c9e8d4"/>
+            <path d="M18 6 v-10 M14 -2 h8" stroke="#0f3d2e" stroke-width="3" stroke-linecap="round"/>
+          </g>
+          <g transform="translate(230,110)">
+            <circle cx="0" cy="0" r="26" fill="none" stroke="#ffb27a" stroke-width="3" stroke-dasharray="6 6"/>
+            <path d="M-8 -4 l8 8 16 -16" fill="none" stroke="#ffb27a" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+          </g>
+        </svg>
+      </div>
+    </div>
+  </section>
+
+  <!-- ROTAS -->
+  <section id="rotas" class="alt-bg">
+    <div class="container">
+      <div class="section-head">
+        <span class="eyebrow">Como o material anda pela cidade</span>
+        <h2>Rotas de coleta</h2>
+        <p>Cada rota liga um conjunto de bairros em um dia fixo da semana — do caminhão de coleta até a cooperativa de triagem.</p>
+      </div>
+
+      <div class="rota-select" id="rotaSelect">
+        <button class="active" data-rota="1">Rota 1 · Centro & Serviços</button>
+        <button data-rota="2">Rota 2 · Leste / Planalto</button>
+        <button data-rota="3">Rota 3 · Especiais & Logística Reversa</button>
+        <button data-rota="4">Rota 4 · Zona Sul / Novos Bairros</button>
+      </div>
+
+      <div class="rota-track" id="rotaTrack"></div>
+    </div>
+  </section>
+
+  <!-- MAPA -->
+  <section id="mapa">
+    <div class="container">
+      <div class="section-head">
+        <span class="eyebrow">Veja no mapa e navegue até lá</span>
+        <h2>Pontos de coleta pelo mapa</h2>
+        <p>Todos os pontos das rotas acima, num mapa só. Clique num marcador e abra a navegação direto no Waze.</p>
+      </div>
+
+      <div class="mapa-layout">
+        <div id="mapaLeaflet"></div>
+        <div class="mapa-lista" id="mapaLista"></div>
+      </div>
+      <p class="mapa-nota">O EcoRotas não tem acesso à API de trânsito do Waze em tempo real — isso não é oferecido publicamente pelo Waze para sites de terceiros. O que fazemos aqui é te levar direto pro Waze, já com a navegação armada até o ponto escolhido.</p>
+    </div>
+  </section>
+
+  <!-- ODS -->
+  <section id="ods">
+    <div class="container">
+      <div class="section-head">
+        <span class="eyebrow">Compromisso com os Objetivos de Desenvolvimento Sustentável</span>
+        <h2>ODS que este projeto ajuda a avançar</h2>
+        <p>Organizar rotas de coleta conecta diretamente a iniciativa a quatro metas da Agenda 2030 da ONU.</p>
+      </div>
+
+      <div class="ods-grid">
+        <div class="ods-card ods-11">
+          <span class="num">11</span>
+          <div>
+            <h4>Cidades e Comunidades Sustentáveis</h4>
+            <p>Reduz o descarte irregular e melhora a gestão de resíduos urbanos.</p>
+          </div>
+        </div>
+        <div class="ods-card ods-12">
+          <span class="num">12</span>
+          <div>
+            <h4>Consumo e Produção Responsáveis</h4>
+            <p>Incentiva a separação correta e a reintrodução de materiais na cadeia produtiva.</p>
+          </div>
+        </div>
+        <div class="ods-card ods-13">
+          <span class="num">13</span>
+          <div>
+            <h4>Ação Contra a Mudança do Clima</h4>
+            <p>Rotas otimizadas reduzem deslocamentos e emissões dos caminhões de coleta.</p>
+          </div>
+        </div>
+        <div class="ods-card ods-15">
+          <span class="num">15</span>
+          <div>
+            <h4>Vida Terrestre</h4>
+            <p>Menos resíduo em aterros e áreas naturais, protegendo ecossistemas locais.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- DICAS -->
+  <section id="dicas" class="alt-bg">
+    <div class="container">
+      <div class="section-head">
+        <span class="eyebrow">Separação correta faz toda a diferença</span>
+        <h2>Dicas rápidas de reciclagem</h2>
+        <p>Pequenos hábitos que facilitam o trabalho das cooperativas e aumentam a taxa real de reaproveitamento.</p>
+      </div>
+
+      <div class="dicas-grid">
+        <div class="dica-card">
+          <span class="emoji">🧴</span>
+          <h4>Lave antes de descartar</h4>
+          <p>Restos de comida e gordura contaminam o lote inteiro de recicláveis. Um enxágue rápido já resolve.</p>
+        </div>
+        <div class="dica-card">
+          <span class="emoji">📦</span>
+          <h4>Desmonte caixas grandes</h4>
+          <p>Achate papelão e caixas — ocupam menos espaço no caminhão e cabem mais coletas por rota.</p>
+        </div>
+        <div class="dica-card">
+          <span class="emoji">🔋</span>
+          <h4>Pilhas e baterias à parte</h4>
+          <p>Nunca descarte com o reciclável comum. Leve aos pontos fixos indicados nas rotas 1 e 3.</p>
+        </div>
+        <div class="dica-card">
+          <span class="emoji">🪞</span>
+          <h4>Vidro quebrado, embale</h4>
+          <p>Enrole em papel ou papelão e avise que é cortante — protege quem faz a triagem manual.</p>
+        </div>
+        <div class="dica-card">
+          <span class="emoji">🚫</span>
+          <h4>Isopor e papel engordurado não</h4>
+          <p>Guardanapos sujos, isopor e papel plastificado não são recicláveis pela coleta seletiva comum.</p>
+        </div>
+        <div class="dica-card">
+          <span class="emoji">🏷️</span>
+          <h4>Separe por tipo em casa</h4>
+          <p>Um saco pra papel, outro pra plástico/metal e outro pra vidro já agiliza a triagem na cooperativa.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- COMUNIDADE -->
+  <section id="comunidade">
+    <div class="container comunidade-box">
+      <div class="section-head">
+        <span class="eyebrow">Espaço da comunidade</span>
+        <h2>Dicas, achados e avisos de quem recicla</h2>
+        <p>Viu um ponto de coleta lotado, uma rota atrasada ou tem uma dica pra passar? Compartilhe aqui — só é preciso estar logado.</p>
+      </div>
+
+      <div id="comunidadeLoggedOut" class="comunidade-cta">
+        <p>Você precisa estar logado para publicar na comunidade.</p>
+        <button class="btn btn-primary" id="comunidadeLoginBtn" type="button">Entrar ou cadastrar</button>
+      </div>
+
+      <div id="comunidadeLogged">
+        <form class="post-form" id="postForm">
+          <textarea id="postContent" maxlength="500" placeholder="Ex: o ponto da Cooperpires hoje só recebe até 15h..." required></textarea>
+          <div class="post-form-row">
+            <small id="postCount">0/500</small>
+            <button type="submit" class="btn-auth-primary" id="postSubmitBtn" style="border-radius:100px;">Publicar</button>
+          </div>
+          <div class="form-feedback" id="postFeedback"></div>
+        </form>
+      </div>
+
+      <div class="post-list" id="postList">
+        <p class="post-empty">Carregando publicações...</p>
+      </div>
+    </div>
+  </section>
+</main>
+
+<!-- MODAL DE AUTENTICAÇÃO (LOGIN E CADASTRO) -->
+<div class="modal-overlay" id="authModal">
+  <div class="modal-card">
+    <button class="modal-close" id="closeModalBtn">&times;</button>
+    <div class="auth-tabs">
+      <button class="auth-tab active" id="tabLogin">Entrar</button>
+      <button class="auth-tab" id="tabRegister">Cadastrar</button>
+    </div>
+
+    <!-- FORMULÁRIO DE LOGIN -->
+    <form class="auth-form active" id="formLogin">
+      <div class="form-feedback" id="loginFeedback"></div>
+      <div class="form-group">
+        <label for="loginEmail">E-mail</label>
+        <input type="email" id="loginEmail" placeholder="seu@email.com" required>
+      </div>
+      <div class="form-group">
+        <label for="loginPassword">Senha</label>
+        <input type="password" id="loginPassword" placeholder="••••••••" required>
+      </div>
+      <button type="submit" class="btn-submit" id="loginSubmitBtn">Entrar na plataforma</button>
+    </form>
+
+    <!-- FORMULÁRIO DE CADASTRO -->
+    <form class="auth-form" id="formRegister">
+      <div class="form-feedback" id="registerFeedback"></div>
+      <div class="form-group">
+        <label for="regName">Nome completo</label>
+        <input type="text" id="regName" placeholder="Seu nome" required>
+      </div>
+      <div class="form-group">
+        <label for="regEmail">E-mail</label>
+        <input type="email" id="regEmail" placeholder="seu@email.com" required>
+      </div>
+      <div class="form-group">
+        <label for="regPassword">Criar Senha</label>
+        <input type="password" id="regPassword" placeholder="•••••••• (mín. 8 caracteres)" minlength="8" required>
+      </div>
+      <button type="submit" class="btn-submit" id="registerSubmitBtn">Criar minha conta</button>
+    </form>
+  </div>
+</div>
+
+<footer>
+  <div class="container">
+    <div class="footer-grid">
+      <div>
+        <h5>EcoRotas</h5>
+        <p style="max-width:32ch;">Um mapa colaborativo de coleta seletiva, rotas de recolhimento e educação ambiental para a cidade.</p>
+      </div>
+      <div>
+        <h5>Navegação</h5>
+        <ul>
+          <li><a href="#rotas">Rotas</a></li>
+          <li><a href="#mapa">Mapa</a></li>
+          <li><a href="#ods">ODS</a></li>
+          <li><a href="#dicas">Dicas</a></li>
+          <li><a href="#comunidade">Comunidade</a></li>
+        </ul>
+      </div>
+      <div>
+        <h5>Participe</h5>
+        <ul>
+          <li><a href="#">Seja voluntário</a></li>
+          <li><a href="#">Fale conosco</a></li>
+        </ul>
+      </div>
+    </div>
+    <div class="footer-bottom container" style="padding-left:0;padding-right:0;">
+      <span>© 2026 EcoRotas. Projeto educacional.</span>
+      <span>Rotas e estatísticas ainda são dados de exemplo.</span>
+    </div>
+  </div>
+</footer>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+<script>
+  // Menu mobile
+  const menuBtn = document.getElementById('menuBtn');
+  const navRight = document.getElementById('navRight');
+  menuBtn.addEventListener('click', () => {
+    menuBtn.classList.toggle('open');
+    navRight.classList.toggle('mobile-open');
+  });
+  
+  // Rotas de coleta
+  const rotas = {
+    1: {
+      dia: 'Segundas e quintas',
+      paradas: [
+        { hora: '08h00', nome: 'Paço Municipal', desc: 'Rua Miguel Prisco, 288 — Centro. Recolhimento da coleta seletiva permanente de vidro, plástico, papel, eletrônicos e pilhas.', lat: -23.5505, lng: -46.6333 },
+        { hora: '09h30', nome: 'Secretaria de Meio Ambiente', desc: 'Rua Felipe Sabbag, 200 — Shopping Garden, 2º andar. Coleta de pilhas e baterias entregues na secretaria.', lat: -23.5540, lng: -46.6290 },
+        { hora: '11h00', nome: 'Cooperpires', desc: 'Rua Professor Renato Andregheto, 55 — Aliança. Transbordo do material recolhido no Centro para triagem e processamento pela cooperativa.', lat: -23.5480, lng: -46.6210 },
+        { hora: '12h30', nome: 'Feira Coberta do Centro', desc: 'Praça das Bandeiras, s/n — Centro. Ponto extra de coleta de orgânicos das barracas de feira para compostagem.', lat: -23.5518, lng: -46.6355 }
+      ]
+    },
+    2: {
+      dia: 'Terças e sextas',
+      paradas: [
+        { hora: '08h30', nome: 'Ecoponto Pátio JB Duarte', desc: 'Avenida Capitão José Galo — Planalto Bela Vista. Recolhimento de resíduos volumosos de papel, plástico, vidro e metal (até 1m³/pessoa).', lat: -23.5610, lng: -46.6450 },
+        { hora: '09h45', nome: 'Escola Municipal Vista Alegre', desc: 'Rua das Palmeiras, 410 — Planalto. Coleta educativa junto ao projeto de reciclagem dos alunos.', lat: -23.5585, lng: -46.6395 },
+        { hora: '10h30', nome: 'Cooperpires', desc: 'Rua Professor Renato Andregheto, 55 — Aliança. Entrega dos recicláveis para separação e destinamento pelas equipes da cooperativa.', lat: -23.5480, lng: -46.6210 }
+      ]
+    },
+    3: {
+      dia: 'Quartas e sábados',
+      paradas: [
+        { hora: '09h00', nome: 'Posto Ipiranga — Centro Alto', desc: 'Avenida Santos André, 700 — Centro Alto. Recolhimento de pilhas e baterias do ponto fixo do posto.', lat: -23.5450, lng: -46.6380 },
+        { hora: '10h15', nome: 'Secretaria de Meio Ambiente', desc: 'Rua Felipe Sabbag, 200 — Shopping Garden, 2º andar. Consolidação dos resíduos eletrônicos e pilhas para destinação ecológica.', lat: -23.5540, lng: -46.6290 }
+      ]
+    },
+    4: {
+      dia: 'Segundas e quartas (quinzenal)',
+      paradas: [
+        { hora: '08h00', nome: 'Ecoponto Jardim das Flores', desc: 'Rua das Acácias, 120 — Jardim das Flores. Novo ponto de coleta atendendo os bairros recém-integrados à rota.', lat: -23.5700, lng: -46.6200 },
+        { hora: '09h30', nome: 'Associação de Catadores Vida Nova', desc: 'Rua Bom Retiro, 88 — Zona Sul. Parceria direta com catadores autônomos organizados em associação.', lat: -23.5750, lng: -46.6100 },
+        { hora: '11h30', nome: 'Cooperpires', desc: 'Rua Professor Renato Andregheto, 55 — Aliança. Ponto final de transbordo de toda a Zona Sul.', lat: -23.5480, lng: -46.6210 }
+      ]
+    }
+  };
+
+  const rotaTrack = document.getElementById('rotaTrack');
+  const rotaBtns = document.querySelectorAll('#rotaSelect button');
+
+  function renderRota(id){
+    const rota = rotas[id];
+    rotaTrack.innerHTML = rota.paradas.map((p, i) => `
+      <div class="rota-item">
+        <div class="rota-marker">
+          <div class="dot">${i + 1}</div>
+          <div class="rota-line"></div>
+        </div>
+        <div class="rota-content">
+          <span class="time">${p.hora}</span>
+          <h4>${p.nome}</h4>
+          <p>${p.desc}</p>
+        </div>
+      </div>
+    `).join('');
+  }
+
+  rotaBtns.forEach(btn => {
+    btn.addEventListener('click', () => {
+      rotaBtns.forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      renderRota(btn.dataset.rota);
+    });
+  });
+
+  // ---------- Mapa (Leaflet) + links diretos do Waze ----------
+  // Observação: o Waze não oferece uma API pública para embutir rotas ou
+  // trânsito em tempo real em sites de terceiros. O que existe são "deep
+  // links" (waze.com/ul) que abrem o app/site do Waze já navegando até um
+  // ponto — é isso que os botões abaixo fazem.
+  function wazeLink(lat, lng){
+    return `https://waze.com/ul?ll=${lat},${lng}&navigate=yes`;
+  }
+
+  function getPontosUnicos(){
+    const mapa = new Map();
+    Object.entries(rotas).forEach(([rotaId, rota]) => {
+      rota.paradas.forEach(p => {
+        if (p.lat == null || p.lng == null) return;
+        if (!mapa.has(p.nome)) {
+          mapa.set(p.nome, { ...p, rotasIds: [rotaId] });
+        } else {
+          mapa.get(p.nome).rotasIds.push(rotaId);
+        }
+      });
+    });
+    return Array.from(mapa.values());
+  }
+
+  function initMapa(){
+    const mapaLista = document.getElementById('mapaLista');
+    const pontos = getPontosUnicos();
+
+    mapaLista.innerHTML = pontos.map(p => `
+      <div class="mapa-ponto">
+        <div>
+          <h4>${p.nome}</h4>
+          <p>Rota${p.rotasIds.length > 1 ? 's' : ''} ${p.rotasIds.join(', ')} · ${p.hora}</p>
+        </div>
+        <a class="waze-btn" href="${wazeLink(p.lat, p.lng)}" target="_blank" rel="noopener">Abrir no Waze</a>
+      </div>
+    `).join('');
+
+    if (typeof L === 'undefined') {
+      document.getElementById('mapaLeaflet').innerHTML =
+        '<p style="padding:20px;color:var(--tinta-suave);font-size:0.85rem;">Não foi possível carregar o mapa agora. Use a lista ao lado para abrir cada ponto no Waze.</p>';
+      return;
+    }
+
+    const leafletMap = L.map('mapaLeaflet', { scrollWheelZoom: false });
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      maxZoom: 19,
+      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+    }).addTo(leafletMap);
+
+    const markers = pontos.map(p => {
+      const marker = L.marker([p.lat, p.lng]).addTo(leafletMap);
+      marker.bindPopup(`<b>${p.nome}</b><br>${p.desc.split(' — ')[0]}<br><a class="waze-btn" href="${wazeLink(p.lat, p.lng)}" target="_blank" rel="noopener">Abrir no Waze</a>`);
+      return marker;
+    });
+
+    if (markers.length) {
+      leafletMap.fitBounds(L.featureGroup(markers).getBounds().pad(0.25));
+    } else {
+      leafletMap.setView([-23.55, -46.63], 13);
+    }
+  }
+
+  // Controle do Modal de Autenticação
+  const authModal = document.getElementById('authModal');
+  const openLoginBtn = document.getElementById('openLoginBtn');
+  const openRegisterBtn = document.getElementById('openRegisterBtn');
+  const closeModalBtn = document.getElementById('closeModalBtn');
+  const tabLogin = document.getElementById('tabLogin');
+  const tabRegister = document.getElementById('tabRegister');
+  const formLogin = document.getElementById('formLogin');
+  const formRegister = document.getElementById('formRegister');
+
+  function openModal(tab = 'login') {
+    authModal.classList.add('open');
+    if (tab === 'login') {
+      switchTab(tabLogin, formLogin, tabRegister, formRegister);
+    } else {
+      switchTab(tabRegister, formRegister, tabLogin, formLogin);
+    }
+  }
+
+  function closeModal() {
+    authModal.classList.remove('open');
+  }
+
+  function switchTab(activeTab, activeForm, inactiveTab, inactiveForm) {
+    activeTab.classList.add('active');
+    activeForm.classList.add('active');
+    inactiveTab.classList.remove('active');
+    inactiveForm.classList.remove('active');
+  }
+
+  openLoginBtn.addEventListener('click', () => openModal('login'));
+  openRegisterBtn.addEventListener('click', () => openModal('register'));
+  closeModalBtn.addEventListener('click', closeModal);
+
+  tabLogin.addEventListener('click', () => switchTab(tabLogin, formLogin, tabRegister, formRegister));
+  tabRegister.addEventListener('click', () => switchTab(tabRegister, formRegister, tabLogin, formLogin));
+
+  authModal.addEventListener('click', (e) => {
+    if (e.target === authModal) closeModal();
+  });
+
+  // Comunicação com a API (server.js hospedado no Render)
+  const API_BASE = 'https://testefeira.onrender.com';
+
+  function showFeedback(el, message, type){
+    el.textContent = message;
+    el.className = `form-feedback show ${type}`;
+  }
+  function clearFeedback(el){
+    el.textContent = '';
+    el.className = 'form-feedback';
+  }
+
+  async function apiRequest(endpoint, payload){
+    const res = await fetch(`${API_BASE}${endpoint}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    let data = {};
+    try { data = await res.json(); } catch (_) {}
+    if (!res.ok) throw new Error(data.error || 'Ocorreu um erro. Tente novamente.');
+    return data;
+  }
+
+  // Cadastro
+  const registerFeedback = document.getElementById('registerFeedback');
+  const registerSubmitBtn = document.getElementById('registerSubmitBtn');
+
+  formRegister.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    clearFeedback(registerFeedback);
+
+    const name = document.getElementById('regName').value.trim();
+    const email = document.getElementById('regEmail').value.trim();
+    const password = document.getElementById('regPassword').value;
+
+    if (password.length < 8) {
+      showFeedback(registerFeedback, 'A senha precisa ter no mínimo 8 caracteres.', 'error');
+      return;
+    }
+
+    registerSubmitBtn.disabled = true;
+    registerSubmitBtn.textContent = 'Criando conta...';
+
+    try {
+      await apiRequest('/api/register', { name, email, password });
+      showFeedback(registerFeedback, 'Conta criada com sucesso! Você já pode entrar.', 'success');
+      formRegister.reset();
+      setTimeout(() => switchTab(tabLogin, formLogin, tabRegister, formRegister), 1200);
+    } catch (err) {
+      showFeedback(registerFeedback, err.message, 'error');
+    } finally {
+      registerSubmitBtn.disabled = false;
+      registerSubmitBtn.textContent = 'Criar minha conta';
+    }
+  });
+
+  // Login
+  const loginFeedback = document.getElementById('loginFeedback');
+  const loginSubmitBtn = document.getElementById('loginSubmitBtn');
+
+  formLogin.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    clearFeedback(loginFeedback);
+
+    const email = document.getElementById('loginEmail').value.trim();
+    const password = document.getElementById('loginPassword').value;
+
+    loginSubmitBtn.disabled = true;
+    loginSubmitBtn.textContent = 'Entrando...';
+
+    try {
+      const data = await apiRequest('/api/login', { email, password });
+      showFeedback(loginFeedback, 'Login realizado com sucesso!', 'success');
+      if (data.user) {
+        localStorage.setItem('ecorotas_user', JSON.stringify(data.user));
+        if (data.token) localStorage.setItem('ecorotas_token', data.token);
+        renderAuthState();
+      }
+      setTimeout(closeModal, 900);
+    } catch (err) {
+      showFeedback(loginFeedback, err.message, 'error');
+    } finally {
+      loginSubmitBtn.disabled = false;
+      loginSubmitBtn.textContent = 'Entrar na plataforma';
+    }
+  });
+
+  // Exibição do usuário logado
+  const navAuth = document.getElementById('navAuth');
+  const navUser = document.getElementById('navUser');
+  const navUserEmail = document.getElementById('navUserEmail');
+  const logoutBtn = document.getElementById('logoutBtn');
+  const comunidadeLoggedOut = document.getElementById('comunidadeLoggedOut');
+  const comunidadeLogged = document.getElementById('comunidadeLogged');
+  const comunidadeLoginBtn = document.getElementById('comunidadeLoginBtn');
+
+  function getToken(){
+    return localStorage.getItem('ecorotas_token');
+  }
+
+  function renderAuthState(){
+    const raw = localStorage.getItem('ecorotas_user');
+    if (raw) {
+      const user = JSON.parse(raw);
+      navUserEmail.textContent = `Olá, ${user.name || user.email}`;
+      navAuth.style.display = 'none';
+      navUser.style.display = 'flex';
+      comunidadeLoggedOut.style.display = 'none';
+      comunidadeLogged.style.display = 'block';
+    } else {
+      navAuth.style.display = 'flex';
+      navUser.style.display = 'none';
+      comunidadeLoggedOut.style.display = 'block';
+      comunidadeLogged.style.display = 'none';
+    }
+  }
+
+  logoutBtn.addEventListener('click', () => {
+    localStorage.removeItem('ecorotas_user');
+    localStorage.removeItem('ecorotas_token');
+    renderAuthState();
+  });
+
+  comunidadeLoginBtn.addEventListener('click', () => openModal('login'));
+
+  renderAuthState();
+
+  // ---------- Comunidade ----------
+  const postForm = document.getElementById('postForm');
+  const postContent = document.getElementById('postContent');
+  const postCount = document.getElementById('postCount');
+  const postSubmitBtn = document.getElementById('postSubmitBtn');
+  const postFeedback = document.getElementById('postFeedback');
+  const postList = document.getElementById('postList');
+
+  postContent.addEventListener('input', () => {
+    postCount.textContent = `${postContent.value.length}/500`;
+  });
+
+  function formatarData(dataSql){
+    const d = new Date(dataSql.replace(' ', 'T') + 'Z');
+    return d.toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
+  }
+
+  async function fetchPosts(){
+    try {
+      const res = await fetch(`${API_BASE}/api/posts`);
+      if (!res.ok) {
+        if (res.status === 404) {
+          postList.innerHTML = '<p class="post-empty">O backend no ar ainda não tem a área de comunidade (server.js desatualizado no servidor). Faça o redeploy com o server.js mais recente.</p>';
+          return;
+        }
+        throw new Error('status ' + res.status);
+      }
+      const data = await res.json();
+      renderPosts(data.posts || []);
+    } catch (err) {
+      postList.innerHTML = '<p class="post-empty">Não foi possível carregar as publicações agora.</p>';
+    }
+  }
+
+  function renderPosts(posts){
+    if (!posts.length) {
+      postList.innerHTML = '<p class="post-empty">Ainda não há publicações. Seja o primeiro a compartilhar algo!</p>';
+      return;
+    }
+    const raw = localStorage.getItem('ecorotas_user');
+    const meEmail = raw ? JSON.parse(raw).email : null;
+
+    postList.innerHTML = posts.map(p => `
+      <div class="post-card" data-id="${p.id}">
+        <div class="post-card-head">
+          <b></b>
+          <span>${formatarData(p.created_at)}</span>
+        </div>
+        <p></p>
+        ${p.author_email === meEmail ? `<button class="post-delete" data-id="${p.id}">Apagar</button>` : ''}
+      </div>
+    `).join('');
+
+    // Texto preenchido via textContent (não innerHTML) para evitar que
+    // conteúdo publicado pelos usuários seja interpretado como HTML.
+    postList.querySelectorAll('.post-card').forEach((card, i) => {
+      card.querySelector('b').textContent = posts[i].author_name || posts[i].author_email;
+      card.querySelector('p').textContent = posts[i].content;
+    });
+
+    postList.querySelectorAll('.post-delete').forEach(btn => {
+      btn.addEventListener('click', () => deletePost(btn.dataset.id));
+    });
+  }
+
+  postForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    clearFeedback(postFeedback);
+    const content = postContent.value.trim();
+    if (!content) return;
+
+    postSubmitBtn.disabled = true;
+    postSubmitBtn.textContent = 'Publicando...';
+
+    try {
+      const res = await fetch(`${API_BASE}/api/posts`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${getToken()}` },
+        body: JSON.stringify({ content })
+      });
+      let data = {};
+      try { data = await res.json(); } catch(_) {}
+      if (!res.ok) throw new Error(data.error || 'Não foi possível publicar.');
+
+      postContent.value = '';
+      postCount.textContent = '0/500';
+      fetchPosts();
+    } catch (err) {
+      showFeedback(postFeedback, err.message, 'error');
+    } finally {
+      postSubmitBtn.disabled = false;
+      postSubmitBtn.textContent = 'Publicar';
+    }
+  });
+
+  async function deletePost(id){
+    try {
+      const res = await fetch(`${API_BASE}/api/posts/${id}`, {
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${getToken()}` }
+      });
+      if (res.ok) fetchPosts();
+    } catch (err) { /* falha silenciosa */ }
+  }
+
+  // Inicialização das rotas
+  renderRota(1);
+  initMapa();
+  fetchPosts();
+</script>
+
+</body>
+</html>
