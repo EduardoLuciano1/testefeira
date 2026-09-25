@@ -489,6 +489,62 @@
     padding:0;
   }
   .post-empty{color:var(--tinta-suave);font-size:0.9rem;}
+  .post-actions{display:flex;align-items:center;gap:16px;margin-top:10px;}
+  .post-like, .post-reply-toggle{
+    background:none;
+    border:none;
+    color:var(--tinta-suave);
+    font-size:0.8rem;
+    font-weight:600;
+    padding:0;
+    display:flex;
+    align-items:center;
+    gap:5px;
+    cursor:pointer;
+  }
+  .post-like.liked{color:var(--laranja-700);}
+  .post-actions .post-delete{margin-top:0;margin-left:auto;}
+  .comments-section{
+    margin-top:12px;
+    padding-top:12px;
+    border-top:1px solid rgba(15,61,46,0.08);
+    display:flex;
+    flex-direction:column;
+    gap:10px;
+  }
+  .comments-list{display:flex;flex-direction:column;gap:8px;}
+  .comment-card{
+    background:rgba(15,61,46,0.04);
+    border-radius:var(--raio-sm);
+    padding:8px 12px;
+  }
+  .comment-card-head{display:flex;justify-content:space-between;gap:8px;}
+  .comment-card-head b{color:var(--verde-900);font-size:0.8rem;}
+  .comment-card-head span{color:var(--tinta-suave);font-size:0.7rem;}
+  .comment-card p{margin:2px 0 0;font-size:0.85rem;color:var(--tinta);white-space:pre-wrap;}
+  .comment-delete{background:none;border:none;color:var(--laranja-700);font-size:0.7rem;font-weight:700;padding:0;margin-top:4px;}
+  .comment-empty{color:var(--tinta-suave);font-size:0.82rem;}
+  .comment-form{display:flex;gap:8px;}
+  .comment-form input{
+    flex:1;
+    padding:8px 12px;
+    border-radius:100px;
+    border:1px solid rgba(15,61,46,0.2);
+    font-family:inherit;
+    font-size:0.85rem;
+    outline:none;
+  }
+  .comment-form input:focus{border-color:var(--verde-700);}
+  .comment-form button{
+    background:var(--verde-700);
+    color:#fff;
+    border:none;
+    border-radius:100px;
+    padding:8px 16px;
+    font-size:0.8rem;
+    font-weight:700;
+    cursor:pointer;
+  }
 
   /* ---------- MODAL LOGIN / CADASTRO ---------- */
   .modal-overlay{
@@ -1358,7 +1414,22 @@
           <span>${formatarData(p.created_at)}</span>
         </div>
         <p></p>
-        ${p.author_email === meEmail ? `<button class="post-delete" data-id="${p.id}">Apagar</button>` : ''}
+        <div class="post-actions">
+          <button class="post-like ${p.liked_by_me ? 'liked' : ''}" data-id="${p.id}">
+            ${p.liked_by_me ? '❤️' : '🤍'} <span class="like-count">${p.like_count || 0}</span>
+          </button>
+          <button class="post-reply-toggle" data-id="${p.id}">💬 <span class="comment-count">${p.comment_count || 0}</span> resposta${p.comment_count === 1 ? '' : 's'}</button>
+          ${p.author_email === meEmail ? `<button class="post-delete" data-id="${p.id}">Apagar</button>` : ''}
+        </div>
+        <div class="comments-section" id="comments-${p.id}" style="display:none;">
+          <div class="comments-list"><p class="comment-empty">Carregando respostas...</p></div>
+          ${meEmail ? `
+            <form class="comment-form" data-id="${p.id}">
+              <input type="text" maxlength="300" placeholder="Escreva uma resposta..." required>
+              <button type="submit">Enviar</button>
+            </form>
+          ` : `<p class="comment-empty">Entre para responder.</p>`}
+        </div>
       </div>
     `).join('');
 
@@ -1372,6 +1443,135 @@
     postList.querySelectorAll('.post-delete').forEach(btn => {
       btn.addEventListener('click', () => deletePost(btn.dataset.id));
     });
+
+    postList.querySelectorAll('.post-like').forEach(btn => {
+      btn.addEventListener('click', () => toggleLike(btn.dataset.id, btn));
+    });
+
+    postList.querySelectorAll('.post-reply-toggle').forEach(btn => {
+      btn.addEventListener('click', () => toggleComments(btn.dataset.id));
+    });
+
+    postList.querySelectorAll('.comment-form').forEach(form => {
+      form.addEventListener('submit', (e) => {
+        e.preventDefault();
+        const input = form.querySelector('input');
+        const content = input.value.trim();
+        if (!content) return;
+        submitComment(form.dataset.id, content, input);
+      });
+    });
+  }
+
+  async function toggleLike(postId, btn){
+    if (!getToken()) { openModal('login'); return; }
+    btn.disabled = true;
+    try {
+      const res = await fetch(`${API_BASE}/api/posts/${postId}/like`, {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${getToken()}` }
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Não foi possível curtir agora.');
+      btn.classList.toggle('liked', data.liked);
+      btn.innerHTML = `${data.liked ? '❤️' : '🤍'} <span class="like-count">${data.likeCount}</span>`;
+    } catch (err) {
+      alert(err.message);
+    } finally {
+      btn.disabled = false;
+    }
+  }
+
+  function toggleComments(postId){
+    const section = document.getElementById(`comments-${postId}`);
+    const isHidden = section.style.display === 'none';
+    section.style.display = isHidden ? 'flex' : 'none';
+    if (isHidden && !section.dataset.loaded) {
+      loadComments(postId);
+    }
+  }
+
+  async function loadComments(postId){
+    const section = document.getElementById(`comments-${postId}`);
+    const list = section.querySelector('.comments-list');
+    try {
+      const res = await fetch(`${API_BASE}/api/posts/${postId}/comments`);
+      const data = await res.json();
+      renderComments(postId, data.comments || []);
+      section.dataset.loaded = '1';
+    } catch (err) {
+      list.innerHTML = '<p class="comment-empty">Não foi possível carregar as respostas.</p>';
+    }
+  }
+
+  function renderComments(postId, comments){
+    const section = document.getElementById(`comments-${postId}`);
+    const list = section.querySelector('.comments-list');
+    const raw = localStorage.getItem('ecorotas_user');
+    const meEmail = raw ? JSON.parse(raw).email : null;
+
+    if (!comments.length) {
+      list.innerHTML = '<p class="comment-empty">Nenhuma resposta ainda.</p>';
+      return;
+    }
+
+    list.innerHTML = comments.map(c => `
+      <div class="comment-card" data-id="${c.id}">
+        <div class="comment-card-head">
+          <b></b>
+          <span>${formatarData(c.created_at)}</span>
+        </div>
+        <p></p>
+        ${c.author_email === meEmail ? `<button class="comment-delete" data-id="${c.id}">Apagar</button>` : ''}
+      </div>
+    `).join('');
+
+    list.querySelectorAll('.comment-card').forEach((card, i) => {
+      card.querySelector('b').textContent = comments[i].author_name || comments[i].author_email;
+      card.querySelector('p').textContent = comments[i].content;
+    });
+
+    list.querySelectorAll('.comment-delete').forEach(btn => {
+      btn.addEventListener('click', () => deleteComment(postId, btn.dataset.id));
+    });
+  }
+
+  async function submitComment(postId, content, input){
+    try {
+      const res = await fetch(`${API_BASE}/api/posts/${postId}/comments`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${getToken()}` },
+        body: JSON.stringify({ content })
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Não foi possível responder agora.');
+      input.value = '';
+      const section = document.getElementById(`comments-${postId}`);
+      section.dataset.loaded = '';
+      loadComments(postId);
+      const card = postList.querySelector(`.post-card[data-id="${postId}"]`);
+      const countEl = card.querySelector('.post-reply-toggle .comment-count');
+      countEl.textContent = String(Number(countEl.textContent) + 1);
+    } catch (err) {
+      alert(err.message);
+    }
+  }
+
+  async function deleteComment(postId, commentId){
+    try {
+      const res = await fetch(`${API_BASE}/api/comments/${commentId}`, {
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${getToken()}` }
+      });
+      if (res.ok) {
+        const section = document.getElementById(`comments-${postId}`);
+        section.dataset.loaded = '';
+        loadComments(postId);
+        const card = postList.querySelector(`.post-card[data-id="${postId}"]`);
+        const countEl = card.querySelector('.post-reply-toggle .comment-count');
+        countEl.textContent = String(Math.max(0, Number(countEl.textContent) - 1));
+      }
+    } catch (err) { /* falha silenciosa */ }
   }
 
   postForm.addEventListener('submit', async (e) => {
