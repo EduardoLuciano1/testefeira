@@ -1,0 +1,12 @@
+{
+  "name": "ecorotas",
+  "version": "2.0.0",
+  "private": true,
+  "description": "EcoRotas — mapa colaborativo de rotas de reciclagem",
+  "type": "commonjs",
+  "dependencies": {
+    "@netlify/blobs": "^8.1.0",
+    "bcryptjs": "^2.4.3",
+    "jsonwebtoken": "^9.0.2"
+  }
+}
